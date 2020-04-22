@@ -1,18 +1,51 @@
-一、zookeeper安装
+一（1）、zookeeper安装
 1.kafka需要使用zookeeper(可以使用kafka自带打包好的zookeeper)
 2.下载并解压zookeeper（https://www.apache.org/dyn/closer.cgi/zookeeper/）
 3.复制一份config下的zoo_sample.cfg改名为zoo.cfg（跟zoo_sample.cfg位置相同即可）
 4.打开zoo.cfg，将dataDir的值修改为如E:\\tools\\zookeeper\\apache-zookeeper-3.6.0-bin\\tmp（数据保存目录）
 5.进入bin启动zookeeper（zkServer文件，示系统而定），可打开zkCli判断zookeeper是否正常启动
 
-二、kafka安装
+一（2）、kafka安装
 1.下载并解压：https://kafka.apache.org/downloads
 2.执行（需已启动zookeeper）：.\bin\windows\kafka-server-start.bat .\config\server.properties
 3.config目录下修改server.properties中log.dirs（log.dirs=E:\\tools\\kafka\\kafka_2.13-2.4.1\\tmps\\kafka-logs）
 4.问题：
     更换了zookeeper后出现kafka无法启动问题，或者在日志中出现zookeeper不匹配问题（config目录下server.properties 修改了log.dir路径）
 
+二、简介
+    1.基本对象：
+        0.基本概念：
+        消息：发送接收的内容
+        批次：防止消息过大，多个消息可能会分批次发送一组出去
+        broker：一个kafka服务
+        broker 集群：多个kafka组成的服务
+        Replica:副本，有Leader Replica（提供kafka服务）和Follower Replica（防止Leader Replica宕机，宕机则上位）
+        topic：主题，如同一个很多管道的容器
+        partition：分区，如同容器内的管道（分区有时虽在一个主题却不一定在同一个broker）
+        生产者：向topic发送消息
+        消费者：向topic获取消息
+        消费者群组：多个消费者组成的group
+        offset：偏移量，记录消费者发生重平衡时的位置，以便用来恢复数据
+        Rebalance：重平衡，消费者数量改变（分区数量改变）重新分配主题分区的过程，每次重平衡过程中都会导致万物静止
+
+    2.模式：
+        点对点：一对一模式
+        发布/订阅：多对多模式
+
+    3.主题的自动创建创建（auto.create.topics.enable，默认true）：改为false则不会自动创建
+        生产者发送消息
+        消费者订阅主题
+        客户端发送元数据请求
+
+    4.主题自动创建的分区数量为：1
+
+    5.Kafka 数据压缩：
+        发生位置：Kafka Producer 和 Kafka Consumer
+        压缩算法：GZIP
+
+
 三、kafka client使用
+
 1.pom添加依赖
 
 2.生产者
@@ -24,9 +57,73 @@
       异步发送：KafkaProducer.send(ProducerRecord，callback());
     ⑥ 关闭：KafkaProducer.close()，不添加发不出去
 
-3.生产者
+3.消费者
     ① 创建类 KafkaConsumeNotSpr
     ② 创建 Properties（用来为生产者属性赋值）
     ③ 创建KafkaConsumer，并把Properties赋予其
     ④ 指定接收topic，KafkaConsumer.subscribe(Arrays.asList("NOTSPR_TOPIC2"))，subscribe内是一个conlection类
     ⑤ 获取消息：KafkaConsumer.poll(Duration)，遍历返回值ConsumerRecords
+
+四、springboot方式
+1.pom添加依赖，yml编写基本配置、生产者配置、消费者配置
+
+2.创建生产者KafkaProductController（同步异步）
+    使用kafkaTemplate发送，并根据同步异步的对应方式反馈
+
+3.创建消费者KafkaConsumeController
+    使用@KafkaListener(topics = "")来监听生产者发送的消息
+
+五、生产者发送消息方式
+0.消息分发机制（分区）-（可自定义分区策略，Partitioner.class）：
+    ① 顺序轮询：按顺序发送给分区
+    ② 随机轮询：在分区总数下生成随机数，按随机数发送给分区（原则上也是要均匀分配）
+    ③ 按key分配，消息为（key，value）：
+        key不为空：key.havacode()%分区数，存入id为结果的分区
+        key为空：在metadata.max.age.ms配置的时间范围之内随机一个分区new Random().nextInt(metadata.max.age.ms)进行存储
+
+1.发送并忘记：不关心消息是否发成功，对返回结果也不作判断（异步，吞吐量高，不可靠）
+
+2.同步发送：按条发送，然后验证消息是否发送成功（使用get方法返回future对象）
+
+3.异步发送（回调函数），异步发送，验证消息通过回调函数操作
+
+六、消费者消费方式
+
+1.通过topicPartitions指定消费topic分区
+
+2.规定消费者组消费指定分区（且小组内只能有一个消费者消费该主题）
+    ① 范围分区：同一个主题的分区/消费者数量，剩余的数量按顺序赋予消费者，但分配的各分区都是连续的（如果多个主题都这样，前面的消费者就会压力大些）
+             如：0, 1, 2, 3, 4, 5, 6, 7, 8, 9；消费者C1-0, C2-0, C2-1。
+             C1-0 将消费 0, 1, 2, 3 分区
+             C2-0 将消费 4, 5, 6 分区
+             C2-1 将消费 7, 8, 9 分区
+
+    ② 轮询分区：把主题和分区组成列表list，按list.hashcode排序，按顺序赋予消费者
+            如： 主题分区list：T1-0，T1-1, T1-2, T1-3, T1-4, T1-5, T1-6, T1-7, T1-8, T1-9
+                list.hashcode排序：T1-5, T1-3, T1-0, T1-8, T1-2, T1-1, T1-4, T1-7, T1-6, T1-9
+                分配给消费者: C1-0 将消费 T1-5, T1-2, T1-6 分区；
+                             C1-1 将消费 T1-3, T1-1, T1-9 分区；
+                             C2-0 将消费 T1-0, T1-4 分区；
+                             C2-1 将消费 T1-8, T1-7 分区；
+
+3.重新负载均衡rebalance（重新给消费者分配消费的分区）
+    ① 触发原因：
+        消费者组 新增或减少 消费者
+        该主题下的分区增加或减少
+    ② 执行者：coordinator （也管理consumer group）
+
+4.offset（消费者消费同一个分区的唯一id，如同指针）
+    ① 作用：记录该次消费该分区到那个位置，如出现意外或重平衡，下次可从该位置继续消费
+
+    ② 保存地点：kafka提供了consumer_offsets的topic主题（其有0-49的分区，kafka-logs下可见），存入分区方式与五.0中的一致
+
+    ③ 异常：如果偏移量小于最后一次提交则会重复消费，大于最后一次提交则会丢失数据，默认enable.auto.commit 为true
+           可设置enable.auto.commit为false，使用(KafkaConsumer)异步提交 commitAsync() 与同步提交 commitSync() 手动提交向consumer_offset提交
+
+5.消费者数量不应大于 分区数量，否则会有消费者空闲
+
+6.消费者不知道生产者已发送消息，需要不断poll轮询
+
+
+
+

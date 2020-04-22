@@ -3,24 +3,38 @@ package com.yiyuclub.springbootkafka.kafka;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.Properties;
 
 public class KafkaConsumeNotSpr {
-    public  KafkaConsumer<String,String> getKafka(){
+    public static void main(String[] args) {
+        //实例化类
+        KafkaConsumeNotSpr kc = new KafkaConsumeNotSpr();
+        //获得KafkaConsumer对象
+        KafkaConsumer<String, String> k = kc.getKafka();
+        //指定接收topic
+        k.subscribe(Arrays.asList("NOTSPR_TOPIC2"));
+        while (true) {
+            //接收消息
+            ConsumerRecords<String, String> records = k.poll(Duration.ofMillis(3000));
+            System.out.println("记录数：" + records.count());
+            records.forEach((ConsumerRecord<String, String> record) -> {
+                System.out.println("-----------------");
+                System.out.printf("offset = %d, value = %s", record.offset(), record.value());
+                System.out.println();
+            });
+            //异步提交offset
+            k.commitAsync();
+        }
+    }
+
+    public KafkaConsumer<String, String> getKafka() {
         Properties p = new Properties();
         //配置地址
-        p.setProperty("bootstrap.servers","localhost:9092");
+        p.setProperty("bootstrap.servers", "localhost:9092");
         //消费群组id,非必需
         p.setProperty("group.id", "0");
         //消费者是否自动提交偏移量，默认值是 true
@@ -39,27 +53,7 @@ public class KafkaConsumeNotSpr {
         p.setProperty("key.deserializer", StringDeserializer.class.getName());
         p.setProperty("value.deserializer", StringDeserializer.class.getName());
         //返回KafkaConsumer对象
-        KafkaConsumer<String,String> k = new KafkaConsumer<String, String>(p);
+        KafkaConsumer<String, String> k = new KafkaConsumer<String, String>(p);
         return k;
-    }
-
-    public static void main(String[] args){
-        //实例化类
-        KafkaConsumeNotSpr kc = new KafkaConsumeNotSpr();
-        //获得KafkaConsumer对象
-        KafkaConsumer<String,String> k = kc.getKafka();
-        //指定接收topic
-        k.subscribe(Arrays.asList("NOTSPR_TOPIC2"));
-        while(true){
-            //接收消息
-            ConsumerRecords<String, String> records = k.poll(Duration.ofMillis(3000));
-            System.out.println("记录数："+records.count());
-            records.forEach((ConsumerRecord<String,String> record)->{
-                System.out.println("-----------------");
-                System.out.printf("offset = %d, value = %s", record.offset(), record.value());
-                System.out.println();
-
-            });
-        }
     }
 }

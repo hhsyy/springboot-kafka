@@ -1,1 +1,23 @@
+server:
+  servlet:
+    context-path: "/springboot-kafka"
+  port: 8081
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092    # kafka server的地址，集群配多个，中间，逗号隔开
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      buffer-memory: 33554432 #积累到一定数据，一次发送
+      batch-size: 16384 #积累到一定数据，一次发送
+      retries: 0
+    consumer:
+      group-id: 0
+      auto-offset-reset: latest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+
 

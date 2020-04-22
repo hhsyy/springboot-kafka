@@ -10,10 +10,33 @@ import java.util.Properties;
 
 public class KafkaProductNotSpr {
 
-    public KafkaProducer<String, String> getKafka(){
+    public static void main(String[] args) {
+        //实例化类
+        KafkaProductNotSpr k = new KafkaProductNotSpr();
+        //得到 KafkaProducer对象
+        KafkaProducer<String, String> kp = k.getKafka();
+        //为KafkaProducer 指定topic和消息内容
+        ProducerRecord<String, String> pr = new ProducerRecord<>("NOTSPR_TOPIC2", "username", "yiyu");
+        //异步发送消息，同步为get
+        kp.send(pr, new Callback() {
+            @Override
+            public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+                System.out.println("进入消息反馈内");
+                if (e != null) {
+                    System.out.println("异常：" + e);
+                } else {
+                    System.out.println("反馈内容:" + recordMetadata.offset());
+                }
+            }
+        });
+        //关闭，不关闭消息无法发送
+        kp.close();
+    }
+
+    public KafkaProducer<String, String> getKafka() {
         Properties p = new Properties();
         //配置地址
-        p.setProperty("bootstrap.servers","localhost:9092");
+        p.setProperty("bootstrap.servers", "localhost:9092");
         //判断多少个分区接收到生产者的消息，生产者才认为成功
         //0：生产者不知道自己的消息是否被分区接收
         //1：只要有任何一个接收到，就认为成功
@@ -25,36 +48,12 @@ public class KafkaProductNotSpr {
 //        p.setProperty("batch.size","16384");
         //key value序列化
         p.setProperty("key.serializer", StringSerializer.class.getName());
-        p.setProperty("value.serializer",StringSerializer.class.getName());
+        p.setProperty("value.serializer", StringSerializer.class.getName());
 
         //返回KafkaProducer
         KafkaProducer<String, String> kp = new KafkaProducer<String, String>(p);
 
         return kp;
-    }
-
-    public static void main(String[] args){
-        //实例化类
-        KafkaProductNotSpr k = new KafkaProductNotSpr();
-        //得到 KafkaProducer对象
-        KafkaProducer<String, String> kp = k.getKafka();
-        //为KafkaProducer 指定topic和消息内容
-        ProducerRecord<String, String> pr = new ProducerRecord<>("NOTSPR_TOPIC2","username","yiyu");
-
-        //异步发送消息，同步为get
-        kp.send(pr, new Callback() {
-            @Override
-            public void onCompletion(RecordMetadata recordMetadata, Exception e) {
-                System.out.println("进入消息反馈内");
-                if(e != null){
-                    System.out.println("异常："+e);
-                }else{
-                    System.out.println("反馈内容:"+recordMetadata.offset());
-                }
-            }
-        });
-        //关闭，不关闭消息无法发送
-        kp.close();
     }
 
 }
