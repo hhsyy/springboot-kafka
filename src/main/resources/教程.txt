@@ -1,0 +1,32 @@
+一、zookeeper安装
+1.kafka需要使用zookeeper(可以使用kafka自带打包好的zookeeper)
+2.下载并解压zookeeper（https://www.apache.org/dyn/closer.cgi/zookeeper/）
+3.复制一份config下的zoo_sample.cfg改名为zoo.cfg（跟zoo_sample.cfg位置相同即可）
+4.打开zoo.cfg，将dataDir的值修改为如E:\\tools\\zookeeper\\apache-zookeeper-3.6.0-bin\\tmp（数据保存目录）
+5.进入bin启动zookeeper（zkServer文件，示系统而定），可打开zkCli判断zookeeper是否正常启动
+
+二、kafka安装
+1.下载并解压：https://kafka.apache.org/downloads
+2.执行（需已启动zookeeper）：.\bin\windows\kafka-server-start.bat .\config\server.properties
+3.config目录下修改server.properties中log.dirs（log.dirs=E:\\tools\\kafka\\kafka_2.13-2.4.1\\tmps\\kafka-logs）
+4.问题：
+    更换了zookeeper后出现kafka无法启动问题，或者在日志中出现zookeeper不匹配问题（config目录下server.properties 修改了log.dir路径）
+
+三、kafka client使用
+1.pom添加依赖
+
+2.生产者
+    ① 创建类 KafkaProductNotSpr
+    ② 创建 Properties（用来为生产者属性赋值）
+    ③ 创建KafkaProducer，并把Properties赋予其
+    ④ 创建ProducerRecord，填写topic、消息内容等
+    ⑤ 同步发送：KafkaProducer.send(ProducerRecord).get();
+      异步发送：KafkaProducer.send(ProducerRecord，callback());
+    ⑥ 关闭：KafkaProducer.close()，不添加发不出去
+
+3.生产者
+    ① 创建类 KafkaConsumeNotSpr
+    ② 创建 Properties（用来为生产者属性赋值）
+    ③ 创建KafkaConsumer，并把Properties赋予其
+    ④ 指定接收topic，KafkaConsumer.subscribe(Arrays.asList("NOTSPR_TOPIC2"))，subscribe内是一个conlection类
+    ⑤ 获取消息：KafkaConsumer.poll(Duration)，遍历返回值ConsumerRecords
